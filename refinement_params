@@ -1,0 +1,98 @@
+ data_manager {
+    miller_array {
+      file = "REPLACE_MTZ"
+      labels {
+        name = "REPLACE_COLUMN"
+	type = x_ray neutron *electron
+        array_type = unknown amplitude bool complex hendrickson_lattman \
+                     integer *intensity nonsense
+      }
+      user_selected_labels = "REPLACE_COLUMN"
+    }
+    fmodel {
+      xray_data {
+        r_free_flags {
+          generate = True
+          fraction = REPLACE_RFLAG_FRACTION
+        }
+      }
+    }
+    default_miller_array = "REPLACE_MTZ"
+    model {
+      file = "REPLACE_PDB"
+      type = x_ray neutron *electron
+    }
+    default_model = "REPLACE_PDB"
+    restraint_files = "REPLACE_RESTRAINT"
+    default_restraint = "REPLACE_RESTRAINT"
+  }
+  refinement {
+    crystal_symmetry {
+      unit_cell = REPLACE_UNIT_CELL
+      space_group = REPLACE_SPACEGROUP
+    }
+    output {
+      write_def_file = False
+    }
+    electron_density_maps {
+      map_coefficients {
+        map_type = "2mFo-DFc"
+        mtz_label_amplitudes = "2FOFCWT"
+        mtz_label_phases = "PH2FOFCWT"
+        fill_missing_f_obs = True
+      }
+      map_coefficients {
+        map_type = "2mFo-DFc"
+        mtz_label_amplitudes = "2FOFCWT_no_fill"
+        mtz_label_phases = "PH2FOFCWT_no_fill"
+      }
+      map_coefficients {
+        map_type = "mFo-DFc"
+        mtz_label_amplitudes = "FOFCWT"
+        mtz_label_phases = "PHFOFCWT"
+      }
+      map_coefficients {
+        map_type = "anomalous"
+        mtz_label_amplitudes = "ANOM"
+        mtz_label_phases = "PHANOM"
+      }
+    }
+    refine {
+      strategy = *individual_sites *individual_sites_real_space rigid_body \
+                 *individual_adp group_adp tls *occupancies group_anomalous \
+                 den
+      sites {
+
+      }
+    }
+    main {
+      simulated_annealing = True
+      simulated_annealing_torsion = True
+      ordered_solvent = True
+      number_of_macro_cycles = REPLACE_NUM_CYCLES
+      scattering_table = wk1995 it1992 n_gaussian *electron neutron
+      nproc = 6
+      wavelength = 0.0251
+    }
+    pdb_interpretation {
+      ncs_search {
+        enabled = True
+      }
+    }
+    target_weights {
+      optimize_xyz_weight = True
+      optimize_adp_weight = True
+    }
+    qi {
+      qm_restraints {
+        package {
+          program = *test
+        }
+      }
+    }
+  }
+  output {
+    prefix = None
+    serial = 0
+  }
+
