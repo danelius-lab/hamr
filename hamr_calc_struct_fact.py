@@ -3,6 +3,7 @@ def main(input_mtz, input_pdb, intensity_column, sigma_column):
     import gemmi
     try:
         log = logging.getLogger(__name__)
+        logging.basicConfig(level=logging.INFO)
         mtz = gemmi.read_mtz_file(input_mtz)
         mtz.update_reso()
 
@@ -24,7 +25,7 @@ def main(input_mtz, input_pdb, intensity_column, sigma_column):
         scaler.fit_isotropic_b_approximately()
         scaler.fit_parameters()
         
-        r_factor = round(scaler.calculate_r_factor(),1)
+        r_factor = round(scaler.calculate_r_factor(),5)
         log.info(f"Calculated scaled R-factor for {input_pdb}: {r_factor}")
         return r_factor
     except:

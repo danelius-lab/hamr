@@ -1,6 +1,7 @@
 import logging
 
 import hamr_create_confs
+import analyze_refine_results
 def main(input_pdbs, 
         input_mtz, 
         restraint_cif,
@@ -8,27 +9,46 @@ def main(input_pdbs,
         r_free_fraction,
         refinement_columns,
         output_dir):
-    log = logging.GetLogger(__name__)
+    import os
+    log = logging.getLogger(__name__)
+    logging.basicConfig(level=logging.INFO)
     log.info(f"Starting PHENIX refinement process for top {len(input_pdbs)} HAMR solutions.")
     count = 0
+    r_facs = []
     for input_pdb in input_pdbs:
-        count += 1
-        pdb_header = hamr_create_confs.extract_pdb_header(input_pdb, log)
+        
+        pdb_header = hamr_create_confs.extract_pdb_header(input_pdb["file_path"], log)
         space_group_string = pdb_header["space_group"]
         unit_cell_dimensions = pdb_header["unit_cell_dimensions"]
-        refine(
-            input_pdb=input_pdb,
+        prefix = input_pdb["file_path"].split("/")[-1].split(".1.pdb")[0]
+        output_refine_dir = f"{output_dir}/{prefix}"
+        os.makedirs(output_refine_dir, exist_ok=True)
+        r_fac = refine(
+            input_pdb=input_pdb["file_path"],
             input_mtz=input_mtz,
             restraint_cif=restraint_cif,
             space_group_string=space_group_string,
             unit_cell_dimensions=unit_cell_dimensions,
             r_free_fraction=r_free_fraction,
             refinement_columns=refinement_columns,
-            output_dir=output_dir,
+            output_dir=output_refine_dir,
             num_refine_cycles=num_refine_cycles,
             count=count,
             log=log
         )
+        count += 1
+        r_facs.append(r_fac)
+    results = list(sorted(r_facs, key = lambda x: x["r_free"]))
+    log.info("Results from this complete HAMR trial after refinement are below:")
+    str_result_list = []
+    for result in results:
+        str_res = f"{result["name"]} -- R_work: {result["r_work"]}, R_free: {result["r_free"]}"
+        log.info(str_res)
+        str_result_list.append(str_res)
+    with open(f"{output_dir}/refine_summary.txt", "w") as f:
+        f.write("\n".join(str_result_list))
+        f.close()
+    return results[0]["r_free"] < 0.3 and results[0]["r_work"] < 0.3 and results[0]["r_free"] - results[0]["r_work"] < 0.05
 
 def shell_source(script, log):
     import subprocess
@@ -75,7 +95,14 @@ def refine(
                 
     shell_source(phenix_setup_script, log)
     proc = subprocess.run([f"cd {output_dir} && source {phenix_setup_script} && phenix.refine ./phenix_params_{count} overwrite=true refinement.input.symmetry_safety_check=warning" ], capture_output=True, shell=True)
-    log.info(f'Finished PHENIX refinement for {input_pdb}')
+    r_factors = analyze_refine_results.extract_r_factor(output_dir)
+    r_free = r_factors[1]
+    r_work = r_factors[0]
+    log.info(f'Finished PHENIX refinement for {input_pdb} -- R_work: {r_work}, R_free: {r_free}')
+    del proc
+    return {"r_free": r_free, "r_work": r_work, "name": input_pdb}
+
     
+
     
                 

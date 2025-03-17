@@ -1,10 +1,12 @@
 import logging
 import os
+import re 
 
 import hamr_create_confs
 import hamr_calc_struct_fact
 import phase
 import refine
+import analyze_phase_results
 def main(
         input_pdb, 
         input_mtz, 
@@ -23,9 +25,10 @@ def main(
         should_force_trans_amides
         ):
     log = logging.getLogger(__name__)
+    logging.basicConfig(level=logging.INFO)
     amide_bonds = find_amides(input_pdb=input_pdb, template_smiles_string=smiles_string, log=log)
     dihedral_path = rank_dihedrals(input_pdb=input_pdb, angle_step=angle_step, log=log)
-    input_pdbs = [input_pdb]
+    input_pdbs = [{"file_path": input_pdb, "llg": 0}]
     
     #TODO: add time handling/counting messages
     round_count = 0
@@ -34,13 +37,16 @@ def main(
         for amide in amide_bonds:
             if dihedral_angle["angle_indices"][1] in amide and dihedral_angle["angle_indices"][2] in amide and should_force_trans_amides:
                 is_amide = True
+                #TODO: verify this is working as intended
                 log.info("Found dihedral angle for amide bond in this HAMR cycle. Forcing trans-planar geometry and continuing.")
                 break
         
         round_output_path = f"{output_path}/ROUND_{round_count}"
         os.makedirs(round_output_path, exist_ok=True)
+
+        input_pdb_paths = [x["file_path"] for x in input_pdbs]
         hamr_create_confs.main(
-            input_pdbs=input_pdbs, 
+            input_pdbs=input_pdb_paths, 
             output_path=round_output_path, 
             dihedral_atoms=dihedral_angle["angle_indices"],
             angle_step=angle_step,
@@ -61,22 +67,42 @@ def main(
         struct_facts = list(sorted(struct_facts, key=lambda x : x["struct_fact"]))
         phaser_path = f"{round_output_path}/PHASER"
         os.makedirs(phaser_path, exist_ok=True)
-        for i in range(num_to_persist):
-            phase.run_phaser(
+        count = 0
+        valid_structs = 0
+        while valid_structs < num_to_persist and count < len(struct_facts):
+            prefix_conf = struct_facts[count]["file_path"].split("/")[-1].split(".pdb")[0]
+            if not validate_pdb(struct_facts[count]["file_path"],log):
+                count += 1
+                continue
+            if  not should_append_to_list(struct_facts[count]["file_path"], input_pdbs):
+                log.info(f"Duplicate conformer already in pointer list detected: {prefix_conf}. Skipping MR for this conformer and continuing.")
+                count += 1
+                continue
+            prefix_conf = struct_facts[count]["file_path"].split("/")[-1].split(".pdb")[0]
+            phased_pdb = phase.run_phaser(
                 input_mtz=input_mtz,
-                input_pdb=struct_facts[i]["file_path"],
+                input_pdb=struct_facts[count]["file_path"],
                 output_path=phaser_path,
-                prefix=prefix,
+                prefix=prefix_conf,
                 log=log,
             )
-        input_pdbs = []
-        for phased_file in os.listdir(phaser_path):
-            if ".pdb" not in phased_file:
-                continue
-            input_pdbs.append(f"{phaser_path}/{phased_file}")
-        round_count += 1
-        log.info(f"Finished HAMR cycle {round_count} or {len(dihedral_path)}. Continuing with next cycle.")
+            if validate_pdb(input_pdb=phased_pdb, log=log):
+                valid_structs += 1
+                solu_file = re.sub(".1.pdb", ".sol", phased_pdb)
+                with open(solu_file,"r") as f:
+                    stats = analyze_phase_results.extract_solu_stats(solu_string=f.read(), log=log, file_path=phased_pdb, model_name=phased_pdb.split("/")[-1])
+                input_pdbs.append(stats)
+                print(input_pdbs)
 
+            count += 1
+        # for phased_file in os.listdir(phaser_path):
+        #     if ".pdb" not in phased_file:
+        #         continue
+        #     input_pdbs.append(f"{phaser_path}/{phased_file}")
+        input_pdbs = list(sorted(input_pdbs, key=lambda x: x["llg"], reverse=True))
+        input_pdbs = input_pdbs[:num_to_persist]
+        round_count += 1
+        log.info(f"Finished HAMR cycle {round_count} of {len(dihedral_path)}. Continuing with next cycle.")
     log.info(f"Starting initial refinement of top {num_to_persist} candidates.")
     refine_output_path = f"{output_path}/ROUND_{round_count}"
     os.makedirs(refine_output_path, exist_ok=True)
@@ -90,11 +116,22 @@ def main(
         output_dir=refine_output_path
     )
 
+def validate_pdb(input_pdb, log):
+    from rdkit import Chem
+    try:
+        test_mol = Chem.MolFromPDBFile(input_pdb, removeHs=False)
+        if test_mol == None:
+            raise Exception()
+        return True
+    except:
+        log.warn(f"Invalid PDB found for {input_pdb}. This structure will be discarded. Continuing.")
+        return False
+
 def find_amides(input_pdb, template_smiles_string, log):
     from rdkit import Chem
     from rdkit.Chem import AllChem
     log.info("Starting process to find amides.")
-    amide_smarts = "C(=0)-N"
+    amide_smarts = "C(=O)-N"
     amide_query = Chem.MolFromSmarts(amide_smarts)
 
     mol = Chem.MolFromPDBFile(input_pdb)
@@ -102,7 +139,7 @@ def find_amides(input_pdb, template_smiles_string, log):
     AllChem.AssignBondOrdersFromTemplate(template_mol, mol)
     matches = mol.GetSubstructMatches(amide_query)
     num_matches = len(matches)
-    log.info(f"Found {num_matches} of amide bonds.")
+    log.info(f"Found {num_matches} amide bonds.")
     
     return [[transform_idx_to_name(match[0], mol),transform_idx_to_name(match[1], mol),transform_idx_to_name(match[2], mol)] for match in matches]
 
@@ -190,6 +227,18 @@ def rank_dihedrals(input_pdb, angle_step, log):
 def transform_idx_to_name(atom_idx, mol):
     return mol.GetAtomWithIdx(atom_idx).GetMonomerInfo().GetName().strip()
     
+def should_append_to_list(input_pdb, input_structs):
+    from rdkit import Chem
+    from rdkit.Chem import rdMolAlign
+    ref_mol = Chem.MolFromPDBFile(input_pdb)
+    for input_struct in input_structs:
+        mol = Chem.MolFromPDBFile(input_struct["file_path"])
+        try:
+            if rdMolAlign.GetBestRMS(mol, ref_mol) < 0.02:
+                return False
+        except:
+            return False
+    return True
 # def check_for_overlap(input_mol, threshold = 0):
 #     from rdkit.Chem import rdGeometry
 #     conf = input_mol.GetConformer()

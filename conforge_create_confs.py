@@ -16,6 +16,9 @@ def split_sdf_to_pdb(log, sdf_input_path, pdb_output_path, conformer_prefix):
         mols = Chem.SDMolSupplier(sdf_input_path, removeHs=False)
         count = 0
         for mol in mols:
+            if mol == None:
+                log.warning(f"Found invalid molecule in output CONFORGE conformer SDF at position {count}. Continuing.")
+                continue
             Chem.MolToPDBFile(mol, f"{pdb_output_path}/{conformer_prefix}_{count}.pdb")
             count += 1
         return pdb_output_path
@@ -26,7 +29,15 @@ def split_sdf_to_pdb(log, sdf_input_path, pdb_output_path, conformer_prefix):
 def main(input_smiles_path, output_path, conformer_prefix, max_time=7200, min_rmsd=0.5, e_window=20, max_confs=100):
     from CDPL import Chem, ConfGen
     import logging
+    import os
+    
     log = logging.getLogger(__name__)
+    logging.basicConfig(level=logging.INFO)
+    log.info("Starting initial conformer generation with CONFORGE. This may take several minutes without updating.")
+    os.makedirs(output_path, exist_ok=True)
+    # return output_path
+    # output_sdf_path = f"{output_path}/{conformer_prefix}.sdf"
+    # return split_sdf_to_pdb(sdf_input_path=output_sdf_path, pdb_output_path=output_path, conformer_prefix=conformer_prefix, log=log)
     try:
         reader = Chem.MoleculeReader(input_smiles_path)
     except:
@@ -53,12 +64,13 @@ def main(input_smiles_path, output_path, conformer_prefix, max_time=7200, min_rm
         exit(1)
     log.info(f"Succesfully generated {num_confs} conformers with CONFORGE.")
     try:
-        writer = Chem.MolecularGraphWriter(output_path)
+        output_sdf_path = f"{output_path}/{conformer_prefix}.sdf"
+        writer = Chem.MolecularGraphWriter(output_sdf_path)
         writer.write(mol)
     except Exception as e:
         log.exception(f"Failed writing conformers to specified output path: {output_path}. Exiting. Detailed exception information:\n {e}")
         exit(1)
-    return split_sdf_to_pdb(sdf_input_path=output_path, pdb_output_path=output_path, conformer_prefix=conformer_prefix, log=log)
+    return split_sdf_to_pdb(sdf_input_path=output_sdf_path, pdb_output_path=output_path, conformer_prefix=conformer_prefix, log=log)
 
     
     

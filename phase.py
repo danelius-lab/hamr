@@ -4,6 +4,8 @@ import subprocess
 import logging
 def main(input_dir, input_mtz, output_path, should_log_phaser=False):
     log = logging.getLogger(__name__)
+    logging.basicConfig(level=logging.INFO)
+    os.makedirs(output_path, exist_ok=True)
     for file in list(sorted(os.listdir(input_dir))):
         if ".pdb" not in file:
             continue
@@ -11,7 +13,7 @@ def main(input_dir, input_mtz, output_path, should_log_phaser=False):
         prefix = file.split("/")[-1].split(".pdb")[0]
         run_phaser(
             input_mtz=input_mtz,
-            input_pdb=file,
+            input_pdb=f"{input_dir}/{file}",
             output_path=output_path,
             prefix=prefix,
             log=log,
@@ -21,7 +23,7 @@ def main(input_dir, input_mtz, output_path, should_log_phaser=False):
 
 def run_phaser(input_mtz, input_pdb, output_path, prefix, log, should_log_phaser=False, identity=1):
     phaser_exec = os.environ.get("HAMR_PHASER_EXEC")
-    if not phaser_exec:
+    if phaser_exec == None:
         log.exception("Could not retrieve PHASER executable from environment variables. Please specify the location of your PHASER executable at $HAMR_PHASER_EXEC (e.g. export HAMR_PHASER_EXEC=/path/to/your/executable). Exiting.")
         exit(1)
     #COMPOSITION ATOM H NUMBER 1 is a workaround for compositions of small molecules not fitting in unit cell volume
@@ -35,11 +37,11 @@ def run_phaser(input_mtz, input_pdb, output_path, prefix, log, should_log_phaser
     ENSEMBLE HAMR_SEARCH DISABLE CHECK ON
     ENSEMBLE HAMR_SEARCH HETATM ON
     FORMFACTORS ELECTRON
-    PACK SELECT ALL
+    PACK SELECT PERCENT
+    PACK CUTOFF 50
     ELLG TARGET 225
     SGALTERNATIVE SELECT ALL
     XYZOUT ON ENSEMBLE ON
-    XYZOUT ON PACKING ON 
     TOPFILES 1
     KEYWORDS ON
     ZSCORE USE OFF
@@ -51,6 +53,9 @@ def run_phaser(input_mtz, input_pdb, output_path, prefix, log, should_log_phaser
         log.info(f"Starting PHASER for {prefix}")
         start = time.time()
         proc = subprocess.run([phaser_exec + phaser_str], shell=True, capture_output=True, close_fds=False, start_new_session=True)
+        if should_log_phaser:
+            log.info(proc.stdout.decode())
+            log.info(proc.stderr.decode())
         end = time.time()
         total_time = round(end - start, 1)
         log.info(f"Finished PHASER for {prefix} in {total_time} seconds")
@@ -60,8 +65,14 @@ def run_phaser(input_mtz, input_pdb, output_path, prefix, log, should_log_phaser
                 f.write(phaser_output)
                 f.close()
             log.info(phaser_output)
+        del proc
+        return f"{output_path}/{prefix}_PHASER.1.pdb"
     except:
         log.warn(f"Failed PHASER for {prefix}. Continuing with PHASER runs.")
     
     
 
+if __name__ == "__main__":
+    main("/Users/adam/Downloads/grazoprevir_ensembles",
+         "/Users/adam/Downloads/inputs_for_molec_replac/grazoprevir.mtz",
+         "/Users/adam/Downloads/outputs_from_molec_replac/GRAZ_SCHRO")

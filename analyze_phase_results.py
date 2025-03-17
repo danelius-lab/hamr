@@ -4,17 +4,15 @@ def main(input_dir):
     import logging
     from pathlib import Path
     log = logging.getLogger(__name__)
+    logging.basicConfig(level=logging.INFO)
     solutions = []
-    for dir in os.listdir(input_dir):
-        if not Path(f"{input_dir}/{dir}").is_dir():
-            continue
-        for file in os.listdir(f"{input_dir}/{dir}"):
 
+    for file in os.listdir(input_dir):
         #TODO: is this appropriate? how to use customizability for RMSD calculation debugging?
-            if ".sol" not in file:
+        if ".sol" not in file:
                 continue
-            file_path = f"{input_dir}/{dir}/{file}"
-            with open(file_path, "r") as f:
+        file_path = f"{input_dir}/{file}"
+        with open(file_path, "r") as f:
                 solutions.append(extract_solu_stats(
                     solu_string=f.read(), 
                     model_name=file.split(".sol")[0], 
@@ -27,7 +25,7 @@ def main(input_dir):
 def extract_solu_stats(solu_string, model_name, log, file_path):
     import re
     fixed_file_path = re.sub(".sol",".1.pdb", file_path)
-    extracted_data = {"name": model_name, "file_path": fixed_file_path}
+    extracted_data = {"name": model_name, "file_path": fixed_file_path, "llg": 0.0, "tfz": 0.0}
     solu_string = solu_string.strip()
     try:
         tfz_scores = re.findall(r"TFZ==[0-9]*\.[0-9]*", solu_string)
@@ -47,4 +45,9 @@ def extract_solu_stats(solu_string, model_name, log, file_path):
     return extracted_data
 
 if __name__ == "__main__":
-    print(main("/Users/adam/Downloads/outputs_from_molec_replac/COR_CUSTOM_CONF_NAT_TRIAL_12/ROUND_0/PHASER"))
+    results = main("/Users/adam/Downloads/outputs_from_molec_replac/GRAZ_SCHRO")
+    llgs = [x["llg"] for x in results]
+    tfzs = [x["tfz"] for x in results]
+    print(sum(llgs)/len(llgs))
+    print(sum(tfzs)/len(tfzs))
+        

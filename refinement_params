@@ -68,7 +68,6 @@
     main {
       simulated_annealing = True
       simulated_annealing_torsion = True
-      ordered_solvent = True
       number_of_macro_cycles = REPLACE_NUM_CYCLES
       scattering_table = wk1995 it1992 n_gaussian *electron neutron
       nproc = 6
