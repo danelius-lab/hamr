@@ -1,4 +1,5 @@
 import logging
+from sys import exit
 
 import hamr_create_confs
 import analyze_refine_results
@@ -42,7 +43,7 @@ def main(input_pdbs,
     log.info("Results from this complete HAMR trial after refinement are below:")
     str_result_list = []
     for result in results:
-        str_res = f"{result["name"]} -- R_work: {result["r_work"]}, R_free: {result["r_free"]}"
+        str_res = f"{result['name']} -- R_work: {result['r_work']}, R_free: {result['r_free']}"
         log.info(str_res)
         str_result_list.append(str_res)
     with open(f"{output_dir}/refine_summary.txt", "w") as f:
@@ -106,3 +107,7 @@ def refine(
 
     
                 
+if __name__ == "__main__":
+    log = logging.getLogger(__name__)
+    logging.basicConfig(level=logging.INFO)
+    refine(restraint_cif="/Users/adam/Downloads/outputs_from_molec_replac/phenix_refine_cor/eLBOW_82/elbow.UNL.001.cif", input_pdb="/Users/adam/Desktop/corilagin_22_7_2_water.pdb",input_mtz="/Users/adam/Downloads/inputs_for_molec_replac/corilagin_22_7.mtz", space_group_string="P 21 2 21", unit_cell_dimensions="6.96 15.89 24.41 90 90 90", r_free_fraction="0.05", refinement_columns="IMEAN,SIGIMEAN", output_dir="/Users/adam/Desktop/corilagin_22_7_2_water", num_refine_cycles="5", count=0, log=log)

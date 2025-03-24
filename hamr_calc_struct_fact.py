@@ -1,4 +1,6 @@
 import logging
+from sys import exit
+
 def main(input_mtz, input_pdb, intensity_column, sigma_column):
     import gemmi
     try:

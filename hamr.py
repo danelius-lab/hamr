@@ -1,6 +1,7 @@
 import logging
 import os
 import re 
+from math import floor
 
 import hamr_create_confs
 import hamr_calc_struct_fact
@@ -22,20 +23,23 @@ def main(
         angle_step,
         #TODO: implement this option (idk if this is actually needed/useful)
         faulty_conformer_rmsd_cutoff,
-        should_force_trans_amides
+        should_force_trans_amides,
+        fraction_to_phase
         ):
     log = logging.getLogger(__name__)
     logging.basicConfig(level=logging.INFO)
     amide_bonds = find_amides(input_pdb=input_pdb, template_smiles_string=smiles_string, log=log)
     dihedral_path = rank_dihedrals(input_pdb=input_pdb, angle_step=angle_step, log=log)
-    input_pdbs = [{"file_path": input_pdb, "llg": 0}]
+    input_pdbs = [{"file_path": input_pdb, "llg": 0, "r_factor": 1, "name": "initial_pdb"}]
     
     #TODO: add time handling/counting messages
     round_count = 0
     for dihedral_angle in dihedral_path:
         is_amide = False
         for amide in amide_bonds:
-            if dihedral_angle["angle_indices"][1] in amide and dihedral_angle["angle_indices"][2] in amide and should_force_trans_amides:
+            print(dihedral_angle)
+            print(amide)
+            if dihedral_angle["angle_atom_names"][1] in amide and dihedral_angle["angle_atom_names"][2] in amide and should_force_trans_amides:
                 is_amide = True
                 #TODO: verify this is working as intended
                 log.info("Found dihedral angle for amide bond in this HAMR cycle. Forcing trans-planar geometry and continuing.")
@@ -48,11 +52,13 @@ def main(
         hamr_create_confs.main(
             input_pdbs=input_pdb_paths, 
             output_path=round_output_path, 
-            dihedral_atoms=dihedral_angle["angle_indices"],
+            dihedral_atoms=dihedral_angle,
             angle_step=angle_step,
             prefix=prefix,
             is_amide=is_amide)
+        
         struct_facts = []
+       
         for file in os.listdir(round_output_path):
             if ".pdb" not in file:
                 continue
@@ -63,15 +69,28 @@ def main(
                 intensity_column=r_factor_columns[0],
                 sigma_column=r_factor_columns[1],
             )
-            struct_facts.append({"file_path": full_file_path, "struct_fact": struct_fact})
+            conf_num = int(file.split("_")[-1].split(".pdb")[0])
+            input_pdb_idx = floor(conf_num / (370/angle_step))
+            print(input_pdb_idx)
+            orig_struct_fact = hamr_calc_struct_fact.main(
+                input_mtz=input_mtz,
+                input_pdb=input_pdbs[input_pdb_idx]['file_path'],
+                intensity_column=r_factor_columns[0],
+                sigma_column=r_factor_columns[1],
+            )
+            struct_facts.append({"file_path": full_file_path, "struct_fact": struct_fact - orig_struct_fact})
+
+        if round_count == 0:
+            input_pdbs = []
         struct_facts = list(sorted(struct_facts, key=lambda x : x["struct_fact"]))
+        print(struct_facts)
         phaser_path = f"{round_output_path}/PHASER"
         os.makedirs(phaser_path, exist_ok=True)
         count = 0
         valid_structs = 0
-        while valid_structs < num_to_persist and count < len(struct_facts):
+        while (valid_structs < fraction_to_phase * len(struct_facts) or valid_structs < num_to_persist) and count < len(struct_facts):
             prefix_conf = struct_facts[count]["file_path"].split("/")[-1].split(".pdb")[0]
-            if not validate_pdb(struct_facts[count]["file_path"],log):
+            if not validate_pdb(struct_facts[count]["file_path"], log):
                 count += 1
                 continue
             if  not should_append_to_list(struct_facts[count]["file_path"], input_pdbs):
@@ -90,10 +109,11 @@ def main(
                 valid_structs += 1
                 solu_file = re.sub(".1.pdb", ".sol", phased_pdb)
                 with open(solu_file,"r") as f:
-                    stats = analyze_phase_results.extract_solu_stats(solu_string=f.read(), log=log, file_path=phased_pdb, model_name=phased_pdb.split("/")[-1])
+                    stats = analyze_phase_results.extract_solu_stats(solu_string=f.read(), log=log, file_path=phased_pdb, model_name=phased_pdb.split("/")[-1], input_mtz=input_mtz, intensity_column=r_factor_columns[0], sigma_column=r_factor_columns[1])
                 input_pdbs.append(stats)
-                print(input_pdbs)
-
+                log.info("Current solutions:")
+                for f in input_pdbs:
+                    log.info(f"{f['name']} -- LLG: {f['llg']} R-factor: {f['r_factor']}")
             count += 1
         # for phased_file in os.listdir(phaser_path):
         #     if ".pdb" not in phased_file:
@@ -136,7 +156,7 @@ def find_amides(input_pdb, template_smiles_string, log):
 
     mol = Chem.MolFromPDBFile(input_pdb)
     template_mol = Chem.MolFromSmiles(template_smiles_string)
-    AllChem.AssignBondOrdersFromTemplate(template_mol, mol)
+    mol = AllChem.AssignBondOrdersFromTemplate(template_mol, mol)
     matches = mol.GetSubstructMatches(amide_query)
     num_matches = len(matches)
     log.info(f"Found {num_matches} amide bonds.")
@@ -175,7 +195,7 @@ def rank_dihedrals(input_pdb, angle_step, log):
             # skip 3-membered rings
                 if (idx4 == idx1):
                     continue
-                dihed_list.append((idx1, idx2, idx3, idx4))
+                dihed_list.append([idx1, idx2, idx3, idx4])
     
     #double checking that all dihedral angles are manipulatable and won't raise
     allowed_dihed_angles = []
@@ -193,7 +213,7 @@ def rank_dihedrals(input_pdb, angle_step, log):
         del mol
         mol = Chem.MolFromPDBFile(input_pdb)
         rmsd_list = []
-        for angle in range(angle_step, 360, angle_step):
+        for angle in range(angle_step, angle_step+360, angle_step):
             rdMolTransforms.SetDihedralDeg(mol.GetConformer(), dihed_angle[0], dihed_angle[1], dihed_angle[2], dihed_angle[3], angle)
             rmsd = rdMolAlign.GetBestRMS(mol, ref_mol)
             if rmsd > 1000:
@@ -211,7 +231,7 @@ def rank_dihedrals(input_pdb, angle_step, log):
     for dihed_angle in ranked_allowed_dihed_angles:
         should_append = True
         for non_duplicate in non_duplicate_allowed_dihed_angles:
-            if abs(dihed_angle["avg_rmsd"] - non_duplicate["avg_rmsd"]) < 0.005:
+            if abs(dihed_angle["avg_rmsd"] - non_duplicate["avg_rmsd"]) < 0.02:
                 #TODO: better info messaging needed here, maybe include actual atom names? or skip altogether? not sure if this is useful
                 log.info("Duplicate dihedral angle found when ranking dihedrals, skipping this dihedral angle.")
                 should_append = False
@@ -234,10 +254,10 @@ def should_append_to_list(input_pdb, input_structs):
     for input_struct in input_structs:
         mol = Chem.MolFromPDBFile(input_struct["file_path"])
         try:
-            if rdMolAlign.GetBestRMS(mol, ref_mol) < 0.02:
+            if rdMolAlign.GetBestRMS(mol, ref_mol) < 0.005:
                 return False
         except:
-            return False
+            continue
     return True
 # def check_for_overlap(input_mol, threshold = 0):
 #     from rdkit.Chem import rdGeometry
@@ -255,3 +275,8 @@ def should_append_to_list(input_pdb, input_structs):
 #             if distance < threshold:
 #                 return True
 #     return False
+
+if __name__ == "__main__":
+    log = logging.getLogger(__name__)
+    logging.basicConfig(level=logging.INFO)
+    print(find_amides(input_pdb="/Users/adam/Downloads/outputs_from_molec_replac/FINAL/PAR_ALPHA/PAR_NAT/TRIAL_0/ROUND_0/paritaprevir_alpha_0.pdb", template_smiles_string="Cc1cnc(cn1)C(=O)N[C@H]2CCCCC/C=C\\[C@@H]3C[C@]3(NC(=O)[C@@H]4C[C@H](CN4C2=O)Oc5c6ccccc6c7ccccc7n5)C(=O)NS(=O)(=O)C8CC8", log=log))

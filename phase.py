@@ -2,6 +2,7 @@ import os
 import time
 import subprocess
 import logging
+from sys import exit
 def main(input_dir, input_mtz, output_path, should_log_phaser=False):
     log = logging.getLogger(__name__)
     logging.basicConfig(level=logging.INFO)

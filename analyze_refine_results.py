@@ -13,7 +13,7 @@ def main(input_dir):
     results = list(sorted(results, key = lambda x: x["r_free"]))
     log.info("Results from this complete HAMR trial after refinement are below:")
     for result in results:
-        log.info(f"{result["name"]} -- R_free: {result["r_free"]}, R_work: {result["r_work"]}")
+        log.info(f"{result['name']} -- R_free: {result['r_free']}, R_work: {result['r_work']}")
     return results[0]["r_free"] < 0.3 and results[0]["r_work"] < 0.3 and results[0]["r_free"] - results[0]["r_work"] < 0.05
 
 

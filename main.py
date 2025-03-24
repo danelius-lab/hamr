@@ -3,6 +3,7 @@ import json
 import logging
 import os
 from pathlib import Path
+from sys import exit
 
 import conforge_create_confs
 import phase
@@ -53,8 +54,9 @@ def main(settings, log):
     try:
         input_mtz = settings["input_mtz"]
         output_path = settings["output_path"]
+        r_factor_columns = settings["r_factor_columns"]
     except:
-        log.exception("Necessary settings (input_mtz, output_pdb) are missing or invalid in JSON settings. Please provide theses field in the correct format. Exiting.")
+        log.exception("Necessary settings (input_mtz, output_path, r_factor_columns) are missing or invalid in JSON settings. Please provide theses field in the correct format. Exiting.")
         exit(1)
     try:
         should_log_phaser = settings["should_log_phaser"]
@@ -68,7 +70,11 @@ def main(settings, log):
         output_path=f"{output_conformer_path}/PHASER"
     )
     try:
-        solutions = analyze_phase_results.main(f"{output_conformer_path}/PHASER")
+        solutions = analyze_phase_results.main(
+            input_dir=f"{output_conformer_path}/PHASER",
+            input_mtz=input_mtz,
+            intensity_column=r_factor_columns[0],
+            sigma_column=r_factor_columns[1])
         log.info("Initial MR solutions from CONFORGE generated conformers")
         print_phaser_results(phaser_results=solutions, log=log)
     except:
@@ -80,14 +86,17 @@ def main(settings, log):
     current_trial = 0
     has_been_solved = False
     while not has_been_solved and current_trial < len(solutions):
+        # if "268" not in current_soln:
+        #     current_trial += 1
+        #     current_soln = solutions[current_trial]["file_path"]
+        #     continue
         try:
             restraint_cif = settings["restraint_cif"]
             smiles_string = settings["smiles_string"]
-            refinement_columns = settings["refinement_columns"]
-            r_factor_columns = settings["r_factor_columns"]
+            refinement_columns = settings["refinement_columns"]            
 
         except:
-            log.exception("Necessary settings (restraint_cif, smiles_string, refinement_column, r_factor_columns) are missing or invalid in JSON settings. Please provide theses field in the correct format. Exiting.")
+            log.exception("Necessary settings (restraint_cif, smiles_string, refinement_column) are missing or invalid in JSON settings. Please provide theses field in the correct format. Exiting.")
             exit(1)
         try:
             num_refine_cycles = settings["num_refine_cycles"]
@@ -96,14 +105,16 @@ def main(settings, log):
             faulty_conformer_rmsd_cutoff = settings["faulty_conformer_rmsd_cutoff"]
             r_free_fraction = settings["r_free_fraction"]
             should_force_trans_amides = settings["should_force_trans_amides"]
+            fraction_to_phase = settings["fraction_to_phase"]
         except:
-            log.warning("Failed extrating optional setting (num_refine_cycles, angle_stop, num_to_persist, faulty_conformer_rmsd_cutoff, r_free_fraction, should_force_trans_amides) from settings JSON. Using default setting.")
+            log.warning("Failed extracting optional setting (num_refine_cycles, angle_stop, num_to_persist, faulty_conformer_rmsd_cutoff, r_free_fraction, should_force_trans_amides) from settings JSON. Using default setting.")
             num_refine_cycles = "5"
             angle_step = 10
             num_to_persist = 15
             faulty_conformer_rmsd_cutoff = 0
             r_free_fraction = "0.05"    
             should_force_trans_amides = True
+            fraction_to_phase = 0.25
         
         has_been_solved = hamr.main(
             input_pdb=current_soln,
@@ -119,7 +130,8 @@ def main(settings, log):
             prefix=conformer_prefix,
             angle_step=angle_step,
             faulty_conformer_rmsd_cutoff=faulty_conformer_rmsd_cutoff,
-            should_force_trans_amides=should_force_trans_amides
+            should_force_trans_amides=should_force_trans_amides,
+            fraction_to_phase=fraction_to_phase
         )
         current_trial += 1
         if not has_been_solved and current_trial < len(solutions):

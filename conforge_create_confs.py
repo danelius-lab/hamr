@@ -1,3 +1,4 @@
+from sys import exit
 
 def generateConformers(mol, conf_gen):
      from CDPL import ConfGen
