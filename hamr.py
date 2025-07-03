@@ -115,10 +115,6 @@ def main(
                 for f in input_pdbs:
                     log.info(f"{f['name']} -- LLG: {f['llg']} R-factor: {f['r_factor']}")
             count += 1
-        # for phased_file in os.listdir(phaser_path):
-        #     if ".pdb" not in phased_file:
-        #         continue
-        #     input_pdbs.append(f"{phaser_path}/{phased_file}")
         input_pdbs = list(sorted(input_pdbs, key=lambda x: x["llg"], reverse=True))
         input_pdbs = input_pdbs[:num_to_persist]
         round_count += 1
@@ -259,24 +255,4 @@ def should_append_to_list(input_pdb, input_structs):
         except:
             continue
     return True
-# def check_for_overlap(input_mol, threshold = 0):
-#     from rdkit.Chem import rdGeometry
-#     conf = input_mol.GetConformer()
-#     for atom in input_mol.GetAtoms():
-#         disallowed_idxs = [atom.GetIdx()]
-#         atom_coords = conf.GetAtomPosition(atom.GetIdx())
-#         for bond in atom.GetBonds():
-#             disallowed_idxs.append(bond.GetOtherAtomIdx(atom.GetIdx()))
-#         for inner_atom in input_mol.GetAtoms():
-#             if inner_atom.GetIdx() in disallowed_idxs:
-#                 continue
-#             inner_atom_coords = conf.GetAtomPosition(inner_atom.GetIdx())
-#             distance = rdGeometry.Point3D.Distance(atom_coords, inner_atom_coords)
-#             if distance < threshold:
-#                 return True
-#     return False
 
-if __name__ == "__main__":
-    log = logging.getLogger(__name__)
-    logging.basicConfig(level=logging.INFO)
-    print(find_amides(input_pdb="/Users/adam/Downloads/outputs_from_molec_replac/FINAL/PAR_ALPHA/PAR_NAT/TRIAL_0/ROUND_0/paritaprevir_alpha_0.pdb", template_smiles_string="Cc1cnc(cn1)C(=O)N[C@H]2CCCCC/C=C\\[C@@H]3C[C@]3(NC(=O)[C@@H]4C[C@H](CN4C2=O)Oc5c6ccccc6c7ccccc7n5)C(=O)NS(=O)(=O)C8CC8", log=log))

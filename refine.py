@@ -103,11 +103,3 @@ def refine(
     del proc
     return {"r_free": r_free, "r_work": r_work, "name": input_pdb}
 
-    
-
-    
-                
-if __name__ == "__main__":
-    log = logging.getLogger(__name__)
-    logging.basicConfig(level=logging.INFO)
-    refine(restraint_cif="/Users/adam/Downloads/outputs_from_molec_replac/phenix_refine_cor/eLBOW_82/elbow.UNL.001.cif", input_pdb="/Users/adam/Desktop/corilagin_22_7_2_water.pdb",input_mtz="/Users/adam/Downloads/inputs_for_molec_replac/corilagin_22_7.mtz", space_group_string="P 21 2 21", unit_cell_dimensions="6.96 15.89 24.41 90 90 90", r_free_fraction="0.05", refinement_columns="IMEAN,SIGIMEAN", output_dir="/Users/adam/Desktop/corilagin_22_7_2_water", num_refine_cycles="5", count=0, log=log)

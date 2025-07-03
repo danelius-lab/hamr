@@ -54,14 +54,3 @@ def extract_solu_stats(solu_string, model_name, log, file_path, input_mtz, inten
          extracted_data["r_factor"] = 1
     return extracted_data
 
-if __name__ == "__main__":
-    results = main("/Users/adam/Downloads/outputs_from_molec_replac/FINAL/PAR_ALPHA/PAR_12A/CONFORGE/PHASER", input_mtz="/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_alpha.mtz", intensity_column="I", sigma_column="SIGI")
-    llgs = [x["llg"] for x in results]
-    tfzs = [x["tfz"] for x in results]
-    # for result in results:
-    #      result["r_fac"] = hamr_calc_struct_fact.main("/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_alpha.mtzz", result["file_path"], "I", "SIGI")
-    for entry in list(sorted(results, key=lambda x: x["r_factor"], reverse=False))[:20]:
-         print(f"{entry['name']} -- llg: {entry['llg']}, r_factor: {entry['r_factor']}")
-    print(sum(llgs)/len(llgs))
-    print(sum(tfzs)/len(tfzs))
-        

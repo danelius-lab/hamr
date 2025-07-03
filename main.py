@@ -86,10 +86,6 @@ def main(settings, log):
     current_trial = 0
     has_been_solved = False
     while not has_been_solved and current_trial < len(solutions):
-        # if "268" not in current_soln:
-        #     current_trial += 1
-        #     current_soln = solutions[current_trial]["file_path"]
-        #     continue
         try:
             restraint_cif = settings["restraint_cif"]
             smiles_string = settings["smiles_string"]

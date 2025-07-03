@@ -72,8 +72,3 @@ def run_phaser(input_mtz, input_pdb, output_path, prefix, log, should_log_phaser
         log.warn(f"Failed PHASER for {prefix}. Continuing with PHASER runs.")
     
     
-
-if __name__ == "__main__":
-    main("/Users/adam/Downloads/grazoprevir_ensembles",
-         "/Users/adam/Downloads/inputs_for_molec_replac/grazoprevir.mtz",
-         "/Users/adam/Downloads/outputs_from_molec_replac/GRAZ_SCHRO")
