@@ -1,0 +1,22 @@
+{
+  "input_smiles_path": "./grazoprevir.smi",
+  "output_path": "./GRAZ_DEMO",
+  "conformer_prefix": "grazoprevir",
+  "conforge_max_time": 7200,
+  "conforge_min_rmsd": 0.5,
+  "conforge_energy_window": 20,
+  "conforge_max_num_confs": 30,
+  "input_mtz": "./grazoprevir.mtz",
+  "should_log_phaser": false,
+  "restraint_cif": "./grazoprevir.cif",
+  "smiles_string": "COc1ccc2nc3CCCCC[C@@H]4C[C@H]4OC(=O)N[C@H](C(=O)N4C[C@@H](C[C@H]4C(=O)N[C@@]4(C[C@H]4C=C)C(=O)NS(=O)(=O)C4CC4)Oc3nc2c1)C(C)(C)C",
+  "refinement_columns": "I,SIGI",
+  "r_factor_columns": ["I", "SIGI"],
+  "num_refine_cycles": "5",
+  "angle_step": 5,
+  "num_to_persist": 5,
+  "fraction_to_phase": 0.1,
+  "faulty_conformer_rmsd_cutoff": 0,
+  "r_free_fraction": "0.05",
+  "should_force_trans_amides": true
+}

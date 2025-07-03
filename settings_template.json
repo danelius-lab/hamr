@@ -1,0 +1,22 @@
+{
+  "input_smiles_path": "/path/to/your/smiles/file.smi",
+  "output_path": "/path/to/where/to/store/data",
+  "conformer_prefix": "whatever_you_want_to_name_the_files",
+  "conforge_max_time": 7200,
+  "conforge_min_rmsd": 0.5,
+  "conforge_energy_window": 20,
+  "conforge_max_num_confs": 300,
+  "input_mtz": "/path/to/your/merged/CCP4/reflection/file.mtz",
+  "should_log_phaser": false,
+  "restraint_cif": "/path/to/the/restraint/monomer/library/for/refinement.cif",
+  "smiles_string": "smiles_string_of_your_molecule_with_explicit_stereochemistry",
+  "refinement_columns": "I,SIGI",
+  "r_factor_columns": ["I", "SIGI"],
+  "num_refine_cycles": "5",
+  "angle_step": 15,
+  "num_to_persist": 15,
+  "fraction_to_phase": 0.1,
+  "faulty_conformer_rmsd_cutoff": 0,
+  "r_free_fraction": "0.05",
+  "should_force_trans_amides": true
+}
