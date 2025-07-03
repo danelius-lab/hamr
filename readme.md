@@ -10,9 +10,13 @@ Currently HAMR only supports Mac OS with Applie silicon
 You must specify the location of two executables before running HAMR:
 
 - A phaser executable (stored in environment variable $HAMR_PHASER_EXEC)
+
   For ccp4 mac users, this is usually found in /Applications/ccp4-X/bin/phaser by default where X is the version of ccp4 you have installed
+
 - Phenix setup script (stored in environment variable $HAMR_PHENIX_SETUP_SH)
+
   For mac users, this is usually found in /usr/local/phenix-XXXX/phenix_env.sh by default where XXXX is the version of phenix you have installed
+
 - Additionally, you must have the Python v3.13 installed
 
 _Usage_
