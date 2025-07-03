@@ -1,9 +1,11 @@
 _H(igh-throughput) A(utomated) M(olecular) R(eplacement)_
 
 _Reference_
+
 TBD
 
 _Installation_
+
 Currently HAMR only supports Mac OS with Applie silicon
 You must specify the location of two executables before running HAMR:
 
